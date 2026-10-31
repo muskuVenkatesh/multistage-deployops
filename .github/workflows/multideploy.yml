@@ -28,6 +28,9 @@ jobs:
   build-and-deploy:
     name: Build, Test and Deploy
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: multistage-deployops
 
     environment:
       name: ${{ github.event_name == 'push' && 'dev' || inputs.target }}
