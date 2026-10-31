@@ -1,9 +1,149 @@
+
 name: deployment
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
-  
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Select the environment to deploy"
+        required: true
+        type: choice
+        options:
+          - Test
+          - PreProd
+          - Prod
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deployment-${{ github.event_name == 'push' && 'dev' || inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    name: Build, Test and Deploy
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.event_name == 'push' && 'dev' || inputs.target }}
+
+    steps:
+      # 1. Checkout source code
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # 2. Setup Java
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: '17'
+          cache: maven
+
+      # 3. Validate Maven project
+      - name: Validate Maven project
+        run: mvn --batch-mode validate
+
+      # 4. Compile source code
+      - name: Compile Java source code
+        run: mvn --batch-mode compile
+
+      # 5. Run unit tests
+      - name: Run tests
+        run: mvn --batch-mode test
+
+      # 6. Package WAR
+      - name: Package application
+        run: mvn --batch-mode package
+
+      # 7. Verify WAR file
+      - name: Verify WAR file
+        run: |
+          ls -lh target/
+          test -f target/task-manager.war
+
+      # # 8. SonarQube analysis
+      # - name: Build and analyze with SonarQube
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST }}
+      #   run: |
+      #     mvn --batch-mode \
+      #       org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+      #       -Dsonar.projectKey=task-manager \
+      #       -Dsonar.host.url="$SONAR_HOST_URL" \
+      #       -Dsonar.qualitygate.wait=true \
+      #       -Dsonar.qualitygate.timeout=300
+
+      # 9. Deploy WAR to selected Tomcat environment
+      - name: Deploy WAR to Tomcat
+        env:
+          TOMCAT_USER: ${{ secrets.TOMCAT_USER }}
+          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+          TOMCAT_HOST: ${{ secrets.TOMCAT_HOST }}
+        run: |
+          set -eu
+
+          WAR_FILE="target/task-manager.war"
+
+          if [ ! -f "$WAR_FILE" ]; then
+            echo "ERROR: WAR file was not generated."
+            exit 1
+          fi
+
+          if [ -z "$TOMCAT_USER" ] || \
+             [ -z "$TOMCAT_PASSWORD" ] || \
+             [ -z "$TOMCAT_HOST" ]; then
+            echo "ERROR: Tomcat deployment secrets are missing."
+            exit 1
+          fi
+
+          TOMCAT_HOST="${TOMCAT_HOST%/}"
+
+          echo "Deploying application to $TOMCAT_HOST"
+
+          RESPONSE=$(curl --fail-with-body --show-error --silent \
+            --connect-timeout 15 \
+            --max-time 300 \
+            --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+            --upload-file "$WAR_FILE" \
+            "$TOMCAT_HOST/manager/text/deploy?path=/task-manager&update=true")
+
+          echo "$RESPONSE"
+
+          if ! echo "$RESPONSE" | grep -q "^OK -"; then
+            echo "ERROR: Tomcat deployment failed."
+            exit 1
+          fi
+
+          echo "Application deployed successfully."
+
+      # 10. Verify deployment
+      - name: Verify application deployment
+        env:
+          TOMCAT_HOST: ${{ secrets.TOMCAT_HOST }}
+        run: |
+          set -eu
+
+          TOMCAT_HOST="${TOMCAT_HOST%/}"
+
+          echo "Checking application health..."
+
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent \
+              "$TOMCAT_HOST/task-manager/" > /dev/null; then
+              echo "Application is responding successfully."
+              exit 0
+            fi
+
+            echo "Attempt $attempt: Application not ready yet."
+            sleep 10
+          done
+
+          echo "ERROR: Application health check failed."
+          exit 1
