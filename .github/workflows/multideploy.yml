@@ -83,15 +83,15 @@ jobs:
       #       -Dsonar.qualitygate.wait=true \
       #       -Dsonar.qualitygate.timeout=300
 
-      - name: Check Tomcat connectivity
-        env:
-          TOMCAT_HOST: ${{ secrets.TOMCAT_HOST }}
-        run: |
-          echo "Testing Tomcat connectivity..."
+      # - name: Check Tomcat connectivity
+      #   env:
+      #     TOMCAT_HOST: ${{ secrets.TOMCAT_HOST }}
+      #   run: |
+      #     echo "Testing Tomcat connectivity..."
       
-          curl -v \
-            --connect-timeout 15 \
-            "$TOMCAT_HOST"
+      #     curl -v \
+      #       --connect-timeout 15 \
+      #       "$TOMCAT_HOST"
 
       # 9. Deploy WAR to selected Tomcat environment
       - name: Deploy WAR to Tomcat
