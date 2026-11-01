@@ -79,9 +79,9 @@
         <header>
             <div>
                 <h1>Task Management System</h1>
-                <p class="subtitle">Production CRUD Application on Apache Tomcat 11</p>
+                <p class="subtitle">Multi-Environment Application on Apache Tomcat 11</p>
             </div>
-            <span class="badge-env">&#9679; Live on AWS EC2</span>
+            <span class="badge-env" id="env-badge">&#9679; Loading Environment...</span>
         </header>
 
         <div class="stats-grid">
@@ -147,6 +147,21 @@
                 const data = await res.json();
                 allTasks = data.tasks || [];
                 updateStats(data.summary);
+                if (data.environment) {
+                    const badge = document.getElementById('env-badge');
+                    if (badge) {
+                        badge.innerText = (data.environment.icon || '🟢') + ' ' + (data.environment.label || 'DEV ENVIRONMENT');
+                        if (data.environment.name === 'TEST') {
+                            badge.style.background = '#dbeafe'; badge.style.color = '#1e40af'; badge.style.border = '1px solid #93c5fd';
+                        } else if (data.environment.name === 'PRE-PROD') {
+                            badge.style.background = '#fef3c7'; badge.style.color = '#92400e'; badge.style.border = '1px solid #fcd34d';
+                        } else if (data.environment.name === 'PROD') {
+                            badge.style.background = '#fee2e2'; badge.style.color = '#991b1b'; badge.style.border = '1px solid #fca5a5';
+                        } else {
+                            badge.style.background = '#dcfce7'; badge.style.color = '#166534'; badge.style.border = '1px solid #86efac';
+                        }
+                    }
+                }
                 renderTasks();
             } catch (e) {
                 console.error("Failed to load tasks", e);
