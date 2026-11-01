@@ -256,46 +256,16 @@ public class TaskWebServer {
     }
 
     /**
-     * Detects environment for local web server.
-     */
-    private static String getEnvironment() {
-        String env = System.getenv("APP_ENV");
-        if (env == null || env.isBlank()) env = System.getProperty("app.env");
-        if (env != null && !env.isBlank()) return env.trim().toUpperCase();
-        return "LOCAL DEV";
-    }
-
-    /**
      * Serves the single-page HTML / CSS / JS web application.
      */
     private String getWebPageHtml() {
-        String env = getEnvironment();
-        String badgeBg = "#dcfce7";
-        String badgeColor = "#166534";
-        String badgeBorder = "#86efac";
-        String bannerBg = "#f0fdf4";
-        String bannerColor = "#14532d";
-        String bannerBorder = "#bbf7d0";
-        String icon = "🟢";
-
-        if (env.contains("TEST")) {
-            badgeBg = "#dbeafe"; badgeColor = "#1e40af"; badgeBorder = "#93c5fd";
-            bannerBg = "#eff6ff"; bannerColor = "#1e3a8a"; bannerBorder = "#bfdbfe"; icon = "🔵";
-        } else if (env.contains("PRE-PROD") || env.contains("PREPROD") || env.contains("STAGE")) {
-            badgeBg = "#fef3c7"; badgeColor = "#92400e"; badgeBorder = "#fcd34d";
-            bannerBg = "#fffbeb"; bannerColor = "#78350f"; bannerBorder = "#fde68a"; icon = "🟡";
-        } else if (env.contains("PROD")) {
-            badgeBg = "#fee2e2"; badgeColor = "#991b1b"; badgeBorder = "#fca5a5";
-            bannerBg = "#fef2f2"; bannerColor = "#7f1d1d"; bannerBorder = "#fecaca"; icon = "🔴";
-        }
-
-        String template = """
+        return """
         <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Task Management - {{ENV_LABEL}}</title>
+            <title>Task Management System</title>
             <style>
                 :root {
                     --primary: #2563eb;
@@ -366,28 +336,9 @@ public class TaskWebServer {
         </head>
         <body>
             <div class="container">
-                <!-- Environment Banner -->
-                <div style="background: {{BANNER_BG}}; color: {{BANNER_COLOR}}; border: 1.5px solid {{BANNER_BORDER}}; padding: 12px 18px; border-radius: 10px; margin-bottom: 22px; display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 20px;">{{ENV_ICON}}</span>
-                        <div>
-                            <div style="font-size: 15px; font-weight: 700; letter-spacing: 0.5px;">{{ENV_LABEL}}</div>
-                            <div style="font-size: 12px; font-weight: 400; opacity: 0.85;">Built-in Local Web Server &bull; Port {{PORT}}</div>
-                        </div>
-                    </div>
-                    <div style="font-size: 12px; font-weight: 600; background: rgba(255,255,255,0.7); padding: 4px 10px; border-radius: 6px;">
-                        Host: localhost:{{PORT}}
-                    </div>
-                </div>
-
                 <header>
-                    <div>
-                        <h1>Task Management System</h1>
-                        <p class="subtitle">Organize, track, and complete your tasks</p>
-                    </div>
-                    <span style="background: {{BADGE_BG}}; color: {{BADGE_COLOR}}; border: 1.5px solid {{BADGE_BORDER}}; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;">
-                        {{ENV_ICON}} {{ENV_LABEL}}
-                    </span>
+                    <h1>Task Management System</h1>
+                    <p class="subtitle">Organize, track, and complete your tasks</p>
                 </header>
 
                 <div class="stats-grid">
@@ -575,16 +526,5 @@ public class TaskWebServer {
         </body>
         </html>
         """;
-
-        return template
-            .replace("{{ENV_LABEL}}", env)
-            .replace("{{ENV_ICON}}", icon)
-            .replace("{{BADGE_BG}}", badgeBg)
-            .replace("{{BADGE_COLOR}}", badgeColor)
-            .replace("{{BADGE_BORDER}}", badgeBorder)
-            .replace("{{BANNER_BG}}", bannerBg)
-            .replace("{{BANNER_COLOR}}", bannerColor)
-            .replace("{{BANNER_BORDER}}", bannerBorder)
-            .replace("{{PORT}}", String.valueOf(port));
     }
 }

@@ -30,14 +30,14 @@ public class HelloServlet extends HttpServlet {
         String path = request.getServletPath();
 
         if ("/api/tasks".equals(path)) {
-            sendJsonResponse(response, HttpServletResponse.SC_OK, buildTasksJsonResponse(request));
+            sendJsonResponse(response, HttpServletResponse.SC_OK, buildTasksJsonResponse());
             return;
         }
 
         // Serve the Web UI for "/" or "/hello"
         response.setContentType("text/html;charset=UTF-8");
         try (PrintWriter out = response.getWriter()) {
-            out.println(renderHtmlPage(request));
+            out.println(renderHtmlPage());
         }
     }
 
@@ -152,120 +152,12 @@ public class HelloServlet extends HttpServlet {
         }
     }
 
-    public static String detectEnvironment(HttpServletRequest request) {
-        String env = System.getenv("APP_ENV");
-        if (env == null || env.isBlank()) env = System.getenv("ENVIRONMENT");
-        if (env != null && !env.isBlank()) return env.trim().toUpperCase();
-
-        env = System.getProperty("app.env");
-        if (env == null || env.isBlank()) env = System.getProperty("environment");
-        if (env != null && !env.isBlank()) return env.trim().toUpperCase();
-
-        java.io.File envFile = new java.io.File("/etc/app_env");
-        if (envFile.exists()) {
-            try {
-                String val = java.nio.file.Files.readString(envFile.toPath()).trim();
-                if (!val.isEmpty()) return val.toUpperCase();
-            } catch (Exception ignored) {}
-        }
-
-        if (request != null) {
-            String serverName = request.getServerName();
-            if (serverName != null) {
-                String lower = serverName.toLowerCase();
-                if (lower.contains("test") || lower.equals("98.130.122.16") || lower.equals("10.0.11.209")) {
-                    return "TEST";
-                }
-                if (lower.contains("preprod") || lower.contains("pre-prod") || lower.contains("stage")) {
-                    return "PRE-PROD";
-                }
-                if (lower.contains("prod")) {
-                    return "PROD";
-                }
-                if (lower.contains("dev") || lower.equals("16.113.75.120") || lower.equals("16.112.158.179") || lower.equals("10.0.31.163")) {
-                    return "DEV";
-                }
-            }
-        }
-
-        return "DEV";
-    }
-
-    public static class EnvConfig {
-        public final String name;
-        public final String label;
-        public final String icon;
-        public final String badgeBg;
-        public final String badgeColor;
-        public final String badgeBorder;
-        public final String bannerBg;
-        public final String bannerColor;
-        public final String bannerBorder;
-
-        public EnvConfig(String name) {
-            this.name = name;
-            switch (name) {
-                case "TEST" -> {
-                    this.label = "TEST ENVIRONMENT";
-                    this.icon = "🔵";
-                    this.badgeBg = "#dbeafe";
-                    this.badgeColor = "#1e40af";
-                    this.badgeBorder = "#93c5fd";
-                    this.bannerBg = "#eff6ff";
-                    this.bannerColor = "#1e3a8a";
-                    this.bannerBorder = "#bfdbfe";
-                }
-                case "PRE-PROD", "PREPROD", "STAGE", "STAGING" -> {
-                    this.label = "PRE-PROD ENVIRONMENT";
-                    this.icon = "🟡";
-                    this.badgeBg = "#fef3c7";
-                    this.badgeColor = "#92400e";
-                    this.badgeBorder = "#fcd34d";
-                    this.bannerBg = "#fffbeb";
-                    this.bannerColor = "#78350f";
-                    this.bannerBorder = "#fde68a";
-                }
-                case "PROD", "PRODUCTION" -> {
-                    this.label = "PRODUCTION ENVIRONMENT";
-                    this.icon = "🔴";
-                    this.badgeBg = "#fee2e2";
-                    this.badgeColor = "#991b1b";
-                    this.badgeBorder = "#fca5a5";
-                    this.bannerBg = "#fef2f2";
-                    this.bannerColor = "#7f1d1d";
-                    this.bannerBorder = "#fecaca";
-                }
-                default -> {
-                    this.label = "DEV ENVIRONMENT";
-                    this.icon = "🟢";
-                    this.badgeBg = "#dcfce7";
-                    this.badgeColor = "#166534";
-                    this.badgeBorder = "#86efac";
-                    this.bannerBg = "#f0fdf4";
-                    this.bannerColor = "#14532d";
-                    this.bannerBorder = "#bbf7d0";
-                }
-            }
-        }
-    }
-
     private String buildTasksJsonResponse() {
-        return buildTasksJsonResponse(null);
-    }
-
-    private String buildTasksJsonResponse(HttpServletRequest request) {
         List<Task> tasks = taskService.getAllTasks();
         TaskService.TaskSummary summary = taskService.getSummary();
-        String env = detectEnvironment(request);
-        EnvConfig envConfig = new EnvConfig(env);
 
         StringBuilder sb = new StringBuilder();
         sb.append("{");
-        sb.append("\"environment\":{");
-        sb.append("\"name\":\"").append(envConfig.name).append("\",");
-        sb.append("\"label\":\"").append(envConfig.label).append("\",");
-        sb.append("\"icon\":\"").append(envConfig.icon).append("\"");
-        sb.append("},");
         sb.append("\"summary\":{");
         sb.append("\"total\":").append(summary.total()).append(",");
         sb.append("\"completed\":").append(summary.completed()).append(",");
@@ -302,18 +194,14 @@ public class HelloServlet extends HttpServlet {
                 .replace("\t", "\\t");
     }
 
-    private String renderHtmlPage(HttpServletRequest request) {
-        String env = detectEnvironment(request);
-        EnvConfig envConfig = new EnvConfig(env);
-        String host = (request != null && request.getServerName() != null) ? request.getServerName() : "localhost";
-
+    private String renderHtmlPage() {
         return """
         <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>{{ENV_TITLE}}</title>
+            <title>Task Management CRUD Application</title>
             <style>
                 :root {
                     --primary: #2563eb;
@@ -332,39 +220,8 @@ public class HelloServlet extends HttpServlet {
                 body { background-color: var(--bg); color: var(--text); padding: 30px 20px; min-height: 100vh; }
                 .container { max-width: 800px; margin: 0 auto; }
                 
-                .env-banner {
-                    background: {{ENV_BANNER_BG}};
-                    color: {{ENV_BANNER_COLOR}};
-                    border: 1.5px solid {{ENV_BANNER_BORDER}};
-                    padding: 12px 18px;
-                    border-radius: 10px;
-                    margin-bottom: 22px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    font-weight: 600;
-                    font-size: 14px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-                }
-                .env-banner-left { display: flex; align-items: center; gap: 10px; }
-                .env-banner-title { font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
-                .env-banner-sub { font-size: 12px; font-weight: 400; opacity: 0.85; }
-                .env-banner-host { font-size: 12px; font-weight: 600; background: rgba(255,255,255,0.7); padding: 4px 10px; border-radius: 6px; }
-
                 header { margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; }
                 h1 { font-size: 26px; font-weight: 700; color: #1e293b; }
-                .badge-env {
-                    background: {{ENV_BADGE_BG}};
-                    color: {{ENV_BADGE_COLOR}};
-                    border: 1.5px solid {{ENV_BADGE_BORDER}};
-                    padding: 6px 14px;
-                    border-radius: 20px;
-                    font-weight: 700;
-                    font-size: 13px;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                }
                 p.subtitle { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
                 
                 /* Stats Grid */
@@ -416,26 +273,11 @@ public class HelloServlet extends HttpServlet {
         </head>
         <body>
             <div class="container">
-                <!-- Multi-Environment Banner -->
-                <div class="env-banner">
-                    <div class="env-banner-left">
-                        <span style="font-size: 20px;">{{ENV_ICON}}</span>
-                        <div>
-                            <div class="env-banner-title">{{ENV_LABEL}}</div>
-                            <div class="env-banner-sub">Automated Multi-Stage Deployment &bull; Apache Tomcat</div>
-                        </div>
-                    </div>
-                    <div class="env-banner-host">
-                        Host: {{HOST}}
-                    </div>
-                </div>
-
                 <header>
                     <div>
                         <h1>Task Management System</h1>
-                        <p class="subtitle">Multi-Environment CRUD Application on Apache Tomcat 11</p>
+                        <p class="subtitle">Production CRUD Application on Apache Tomcat 11</p>
                     </div>
-                    <span class="badge-env">{{ENV_ICON}} {{ENV_LABEL}}</span>
                 </header>
 
                 <div class="stats-grid">
@@ -624,16 +466,6 @@ public class HelloServlet extends HttpServlet {
             </script>
         </body>
         </html>
-        """
-        .replace("{{ENV_TITLE}}", "Task Management - " + envConfig.label)
-        .replace("{{ENV_BANNER_BG}}", envConfig.bannerBg)
-        .replace("{{ENV_BANNER_COLOR}}", envConfig.bannerColor)
-        .replace("{{ENV_BANNER_BORDER}}", envConfig.bannerBorder)
-        .replace("{{ENV_BADGE_BG}}", envConfig.badgeBg)
-        .replace("{{ENV_BADGE_COLOR}}", envConfig.badgeColor)
-        .replace("{{ENV_BADGE_BORDER}}", envConfig.badgeBorder)
-        .replace("{{ENV_ICON}}", envConfig.icon)
-        .replace("{{ENV_LABEL}}", envConfig.label)
-        .replace("{{HOST}}", host);
+        """;
     }
 }

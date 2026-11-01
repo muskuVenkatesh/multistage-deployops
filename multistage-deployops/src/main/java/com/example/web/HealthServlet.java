@@ -20,10 +20,8 @@ public class HealthServlet extends HttpServlet {
         response.setContentType("text/plain");
         response.setCharacterEncoding("UTF-8");
 
-        String env = com.taskmanager.web.HelloServlet.detectEnvironment(request);
-
         response.getWriter().println(
-            "status=UP\nenvironment=" + env + "\ntime=" + Instant.now()
+            "status=UP\ntime=" + Instant.now()
         );
     }
 }
